@@ -1,0 +1,10 @@
+.env
+*.env
+test*
+*/node_modules/*
+node_modules/*
+*/node_modules
+*._DS_Store
+node_modules
+*.DS_Store
+dist
