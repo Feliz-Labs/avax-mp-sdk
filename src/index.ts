@@ -105,15 +105,15 @@ export class MPSDK {
 
   /**
    * List NFT for sale off chain
-   * @param tokenAddress
+   * @param contractAddress
+   * @param tokenId
    * @param price
    * @returns boolean for success or failure
    */
-  public async ListNFT(tokenAddress: string, price: number) {
+  public async ListNFT(contractAddress: string, tokenId: string, price: number) {
     const seller = this.wallet.address;
-    const [contractAddress, tokenId] = tokenAddress.split("_");
+    const tokenAddress = `${contractAddress}_${tokenId}`;
 
-    console.log("get approval");
     const approved = await getERC721ApprovalStatus(
       this.provider,
       seller,
@@ -172,17 +172,20 @@ export class MPSDK {
 
   /**
    * Buys an NFT, executes on chain
-   * @param tokenAddress
+   * @param contractAddress
+   * @param tokenId
    * @param price
    * @param metadata field returned from read apis for listings
    * @returns transaction hash for purchase transaction or error
    */
   public async BuyNft(
-    tokenAddress: string,
+    contractAddress: string,
+    tokenId: string,
     price: number,
     // Metadata field returned from read apis for listings
     metadata: any
   ) {
+    const tokenAddress = `${contractAddress}_${tokenId}`;
     try {
       const buyer = this.wallet.address;
 
@@ -344,13 +347,15 @@ export class MPSDK {
 
   /**
    * Delists a NFT, executes on chain
-   * @param tokenAddress
+   * @param contractAddress
+   * @param tokenId
    * @param price
    * @param metadata field returned from read apis for listings
    * @returns transaction hash for delist transaction or error
    */
-  public async DelistNFT(tokenAddress: string, price: number, metadata: any) {
+  public async DelistNFT(contractAddress: string, tokenId: string, price: number, metadata: any) {
     const seller = this.wallet.address;
+    const tokenAddress = `${contractAddress}_${tokenId}`;
     try {
       const data = JSON.stringify({
         condition: {
