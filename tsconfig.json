@@ -9,7 +9,8 @@
     "experimentalDecorators": true,
     "emitDecoratorMetadata": true,
     "strictPropertyInitialization": false,
-    "skipLibCheck": true
+    "skipLibCheck": true,
+    "lib": ["es6","esnext.bigint", "dom"]
   },
   "include": [
     "./src/**/*.ts"

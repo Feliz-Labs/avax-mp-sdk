@@ -46,7 +46,7 @@ export class MPSDK {
    * @param priceInNavax
    * @returns bool for success or failure
    */
-  public async CreateCollectionBid(
+  public async createCollectionBid(
     contractAddress: string,
     priceInNavax: number
   ) {
@@ -110,7 +110,7 @@ export class MPSDK {
    * @param price
    * @returns boolean for success or failure
    */
-  public async ListNFT(contractAddress: string, tokenId: string, price: number) {
+  public async listNFT(contractAddress: string, tokenId: string, price: number) {
     const seller = this.wallet.address;
     const tokenAddress = `${contractAddress}_${tokenId}`;
 
@@ -178,7 +178,7 @@ export class MPSDK {
    * @param metadata field returned from read apis for listings
    * @returns transaction hash for purchase transaction or error
    */
-  public async BuyNft(
+  public async buyNft(
     contractAddress: string,
     tokenId: string,
     price: number,
@@ -266,7 +266,7 @@ export class MPSDK {
    * @param metadata field returned from read apis for collection bids
    * @returns transaction hash for sell transaction or error
    */
-  public async AcceptCollectionBid(
+  public async acceptCollectionBid(
     contractAddress: string,
     tokenId: string,
     price: number,
@@ -353,7 +353,7 @@ export class MPSDK {
    * @param metadata field returned from read apis for listings
    * @returns transaction hash for delist transaction or error
    */
-  public async DelistNFT(contractAddress: string, tokenId: string, price: number, metadata: any) {
+  public async delistNFT(contractAddress: string, tokenId: string, price: number, metadata: any) {
     const seller = this.wallet.address;
     const tokenAddress = `${contractAddress}_${tokenId}`;
     try {
@@ -422,7 +422,7 @@ export class MPSDK {
    * @param metadata
    * @returns transaction hash for cancel collection bid transaction or error
    */
-  public async CancelCollectionBid(price: number, metadata: any) {
+  public async cancelCollectionBid(price: number, metadata: any) {
     const bidder = this.wallet.address;
     try {
       const data = JSON.stringify({
