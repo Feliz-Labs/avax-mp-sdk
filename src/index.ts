@@ -41,6 +41,78 @@ export class MPSDK {
   }
 
   /**
+   * Creating a single item bid
+   * @param contractAddress
+   * @param priceInNavax
+   * @param tokenId
+   * @returns bool for success or failure
+   */
+  public async createBid(
+    contractAddress: string,
+    priceInNavax: number,
+    tokenId: string
+  ) {
+    const bidder = this.wallet.address;
+    const wavaxBalance = await getWavaxBalance(this.provider, bidder);
+
+    const approved = await getWavaxApprovalStatus(
+      this.provider,
+      bidder,
+      wavaxBalance
+    );
+
+    if (!approved) {
+      console.log(`Approving marketplace to trade wavax`);
+      const approveNFTReceipt = await approveWavax(this.wallet);
+      console.log(
+        `Approve wavax Transaction Hash: ${approveNFTReceipt.transactionHash}`
+      );
+    }
+
+    const tokenAddress = `${contractAddress.toLowerCase()}_${tokenId}`;
+    const data = JSON.stringify({
+      condition: {
+        bid_tx_args: [
+          {
+            token_address: tokenAddress,
+            buyer_address: bidder,
+            prive: priceInNavax,
+            metadata: {
+              contractAddress: contractAddress.toLowerCase(),
+              tokenId: tokenId.toString(),
+              price: "" + priceInNavax,
+            },
+          },
+        ],
+      },
+    });
+
+    const requestConfig = {
+      method: "post",
+      url: "https://avax.api.hyperspace.xyz/rest/create-bid-tx",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: this.apiKey,
+      },
+      data: data,
+    };
+    const res = await axios.request(requestConfig);
+
+    if (res.data?.length && res.data[0].metadata) {
+      const orderData = res.data[0].metadata;
+      const { transactionBlockBytes } = await handleSignTransaction(
+        orderData,
+        this.wallet
+      );
+
+      const orderObject = JSON.parse(transactionBlockBytes);
+
+      const isValidRes = await this.validateSignature(orderObject);
+
+      return isValidRes;
+    }
+  }
+  /**
    * Creating a collection bid
    * @param contractAddress
    * @param priceInNavax
@@ -61,9 +133,11 @@ export class MPSDK {
     );
 
     if (!approved) {
-      console.log(`Approving marketplace to trade wavax`)
+      console.log(`Approving marketplace to trade wavax`);
       const approveNFTReceipt = await approveWavax(this.wallet);
-      console.log(`Approve wavax Transaction Hash: ${approveNFTReceipt.transactionHash}`);
+      console.log(
+        `Approve wavax Transaction Hash: ${approveNFTReceipt.transactionHash}`
+      );
     }
 
     const data = JSON.stringify({
@@ -110,7 +184,11 @@ export class MPSDK {
    * @param price
    * @returns boolean for success or failure
    */
-  public async listNFT(contractAddress: string, tokenId: string, price: number) {
+  public async listNFT(
+    contractAddress: string,
+    tokenId: string,
+    price: number
+  ) {
     const seller = this.wallet.address;
     const tokenAddress = `${contractAddress}_${tokenId}`;
 
@@ -121,9 +199,14 @@ export class MPSDK {
     );
 
     if (!approved) {
-      console.log(`Approving marketplace to trade ${contractAddress}`)
-      const approveNFTReceipt = await approveErc721(this.wallet, contractAddress);
-      console.log(`Approve ERC721 Transaction Hash: ${approveNFTReceipt.transactionHash}`);
+      console.log(`Approving marketplace to trade ${contractAddress}`);
+      const approveNFTReceipt = await approveErc721(
+        this.wallet,
+        contractAddress
+      );
+      console.log(
+        `Approve ERC721 Transaction Hash: ${approveNFTReceipt.transactionHash}`
+      );
     }
 
     const data = JSON.stringify({
@@ -259,12 +342,104 @@ export class MPSDK {
   }
 
   /**
+   * Accepts a bid with a NFT held by the wallet on chain
+   * @param contractAddress
+   * @param tokenId
+   * @param price
+   * @param metadata field returned from read apis for collection bids
+   * @returns transaction hash for bid transaction or error
+   */
+  public async acceptBid(
+    contractAddress: string,
+    tokenId: string,
+    price: number,
+    // Metadata field returned from read apis for bids
+    metadata: any
+  ) {
+    const seller = this.wallet.address;
+    try {
+      const approved = await getERC721ApprovalStatus(
+        this.provider,
+        seller,
+        contractAddress
+      );
+
+      if (!approved) {
+        console.log(`Approving marketplace to trade ${contractAddress}`);
+        const approveNFTReceipt = await approveErc721(
+          this.wallet,
+          contractAddress
+        );
+        console.log(
+          `Approve ERC721 Transaction Hash: ${approveNFTReceipt.transactionHash}`
+        );
+      }
+
+      const data = JSON.stringify({
+        condition: {
+          token_address: `${contractAddress}_${tokenId}`,
+          price,
+          seller_address: seller,
+          metadata,
+        },
+      });
+
+      const requestConfig = {
+        method: "post",
+        url: "https://avax.api.hyperspace.xyz/rest/create-accept-bid-tx",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: this.apiKey,
+        },
+        data: data,
+      };
+      const res = await axios.request(requestConfig);
+
+      if (res.data?.length && res.data[0].byte_string) {
+        const encodedTransaction = res.data[0].byte_string;
+
+        const txReceipt = await handleSignAndExecute(
+          {
+            data: encodedTransaction,
+          },
+          this.wallet
+        );
+
+        if (txReceipt.status == 1 && txReceipt.transactionHash) {
+          return {
+            digest: txReceipt.transactionHash,
+            errors: null,
+          };
+        }
+
+        return {
+          digest: null,
+          errors:
+            "Failed to sign and execute accept bid transaction",
+        };
+      } else {
+        return {
+          digest: null,
+          tokensPurchased: [],
+          errors: "Failed to create accept bid txn",
+        };
+      }
+    } catch (error: any) {
+      console.log(error);
+      return {
+        digest: null,
+        errors: error.message,
+      };
+    }
+  }
+
+  /**
    * Accepts a collection bid with a NFT held by the wallet on chain
    * @param contractAddress
    * @param tokenId
    * @param price
    * @param metadata field returned from read apis for collection bids
-   * @returns transaction hash for sell transaction or error
+   * @returns transaction hash for accept collection bid transaction or error
    */
   public async acceptCollectionBid(
     contractAddress: string,
@@ -282,9 +457,14 @@ export class MPSDK {
       );
 
       if (!approved) {
-        console.log(`Approving marketplace to trade ${contractAddress}`)
-        const approveNFTReceipt = await approveErc721(this.wallet, contractAddress);
-        console.log(`Approve ERC721 Transaction Hash: ${approveNFTReceipt.transactionHash}`);
+        console.log(`Approving marketplace to trade ${contractAddress}`);
+        const approveNFTReceipt = await approveErc721(
+          this.wallet,
+          contractAddress
+        );
+        console.log(
+          `Approve ERC721 Transaction Hash: ${approveNFTReceipt.transactionHash}`
+        );
       }
 
       const data = JSON.stringify({
@@ -353,7 +533,12 @@ export class MPSDK {
    * @param metadata field returned from read apis for listings
    * @returns transaction hash for delist transaction or error
    */
-  public async delistNFT(contractAddress: string, tokenId: string, price: number, metadata: any) {
+  public async delistNFT(
+    contractAddress: string,
+    tokenId: string,
+    price: number,
+    metadata: any
+  ) {
     const seller = this.wallet.address;
     const tokenAddress = `${contractAddress}_${tokenId}`;
     try {
@@ -405,6 +590,68 @@ export class MPSDK {
         return {
           digest: null,
           errors: "Failed to create delist txn",
+        };
+      }
+    } catch (error: any) {
+      console.log(error);
+      return {
+        digest: null,
+        errors: error.message,
+      };
+    }
+  }
+
+  /**
+   * Cancels a collection bid, executes on chain
+   * @param price
+   * @param metadata
+   * @returns transaction hash for cancel collection bid transaction or error
+   */
+  public async cancelBid(price: number, metadata: any) {
+    const bidder = this.wallet.address;
+    try {
+      const data = JSON.stringify({
+        condition: {
+          cancel_bid_tx_args: [
+            {
+              buyer_address: bidder,
+              price,
+              metadata,
+            },
+          ],
+        },
+      });
+
+      const requestConfig = {
+        method: "post",
+        url: "https://avax.api.hyperspace.xyz/rest/create-cancel-bid-tx",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: this.apiKey,
+        },
+        data: data,
+      };
+      const res = await axios.request(requestConfig);
+
+      if (res.data?.length && res.data[0].byte_string) {
+        const encodedTransaction = res.data[0].byte_string;
+        const txHash = await handleSignAndExecute(
+          {
+            data: encodedTransaction,
+          },
+          this.wallet
+        );
+
+        if (txHash.transactionHash) {
+          return {
+            digest: txHash.transactionHash,
+            errors: null,
+          };
+        }
+
+        return {
+          digest: null,
+          errors: "Failed to sign and execute cancel bid transaction",
         };
       }
     } catch (error: any) {

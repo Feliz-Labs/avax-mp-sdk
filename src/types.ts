@@ -1,3 +1,15 @@
+export enum OperationComparisonEnum {
+  GREATER_THAN = "GREATER_THAN",
+  GREATER_THAN_OR_EQUAL_TO = "GREATER_THAN_OR_EQUAL_TO",
+  LESS_THAN = "LESS_THAN",
+  LESS_THAN_OR_EQUAL_TO = "LESS_THAN_OR_EQUAL_TO",
+}
+
+export class NumberInputArg {
+  operation: OperationComparisonEnum;
+  value: number;
+}
+
 export type Scalars = {
   ID: string;
   String: string;

@@ -1,5 +1,5 @@
 import axios from "axios";
-import { OrderConfig, PaginationConfig } from "./types";
+import { NumberInputArg, OrderConfig, PaginationConfig } from "./types";
 const API_KEY = "";
 
 /**
@@ -365,3 +365,87 @@ export const getCollectionStats = async ({
 
   return await axios.request(config);
 };
+
+/**
+ * Get bids placed by wallet
+ * @param walletAddress
+ * @param pagination
+ * @returns MarketplaceSnapshotResponse[]
+ */
+export const getUserBids = async({
+  walletAddress,
+  pagination,
+}: {
+  walletAddress: string;
+  pagination?: PaginationConfig;
+}) => {
+  const condition = {
+    condition: {
+      buyer_address: walletAddress
+    },
+    pagination_info: pagination,
+  }
+  const data = JSON.stringify(condition);
+
+  const config = {
+    method: "post",
+    url: "https://avax.api.hyperspace.xyz/rest/get-user-bids",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: API_KEY,
+    },
+    data,
+  };
+
+  return await axios.request(config);
+}
+
+/**
+ * Get bids received on NFT, we validate and return 5 bids if they exist
+ * @param collection Contract Address
+ * @param tokenId Token Id
+ * @param pagination
+ * @param price Optional field to filter by bid price
+ * @returns MarketplaceSnapshotResponse[]
+ * 
+ * To find latest bid use the following order config
+ * [{field_name: "block_timestamp", sort_order: SortOrderEnum.Desc}, {field_name: "instruction_index", sort_order: SortOrderEnum.Desc}]
+ * 
+ * To find highest bid for token do the following
+ * [{field_name: "display_price", sort_order: SortOrderEnum.Desc}]
+ * 
+ */
+
+export const getBidsRec = async ({
+ collection,
+ tokenId,
+ price,
+ orderBy
+} : {
+  collection: string;
+  tokenId: string;
+  orderBy?: OrderConfig[];
+  price?: NumberInputArg
+}) => {
+  const tokenAddress = `${collection.toLowerCase()}_${tokenId}`
+
+  const condition = {
+    condition: {
+      token_address: tokenAddress,
+      display_price: price
+    },
+    order_by: orderBy
+  }
+  const data = JSON.stringify(condition);
+  const config = {
+    method: "post",
+    url: "https://avax.api.hyperspace.xyz/rest/get-token-state",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: API_KEY,
+    },
+    data,
+  };
+
+  return await axios.request(config);
+}
